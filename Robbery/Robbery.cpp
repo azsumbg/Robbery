@@ -128,10 +128,12 @@ ID2D1Bitmap* bmpSergeR[8]{ nullptr };
 
 dll::FIELD Field{};
 
-
-
-
-
+dll::hero_ptr Robber = nullptr;
+bool robber_moving = false;
+float robber_dest_x = 0;
+float robber_dest_y = 0;
+float go_up = false;
+float go_right = false;
 
 //////////////////////////////////////////////////////////////////////
 template<typename T> concept CanBeReleased = requires (T parameter)
@@ -219,6 +221,9 @@ void InitGame()
 
     wcscpy_s(current_player, L"ONE ROBBER");
     name_set = false;
+
+    ClearMem(&Robber);
+    Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 600.0f));
 
 }
 
@@ -433,6 +438,20 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
             SendMessage(hwnd, WM_CLOSE, NULL, NULL);
             break;
 
+        }
+        break;
+
+    case WM_LBUTTONDOWN:
+        if (Robber)
+        {
+            robber_moving = true;
+            robber_dest_x = LOWORD(lParam);
+            robber_dest_y = HIWORD(lParam);
+            if (Robber->x < robber_dest_x)go_right = true;
+            else if (Robber->x > robber_dest_x)go_right = false;
+            if (Robber->y > robber_dest_y)go_up = true;
+            else if (Robber->y < robber_dest_y)go_up = false;
+            Robber->LineSetup(robber_dest_x, robber_dest_y);
         }
         break;
 
@@ -854,7 +873,37 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         }
         ///////////////////////////////////////////
 
+        //ROBBER **********************************
 
+        if (Robber)
+        {
+            if (robber_moving)
+            {
+                Robber->Move(game_speed);
+                if (go_up)
+                {
+                    if (go_right)
+                    {
+                        if (Robber->y <= robber_dest_y && Robber->ex >= robber_dest_x)robber_moving = false;
+                    }
+                    else
+                    {
+                        if(Robber->y <= robber_dest_y && Robber->x <= robber_dest_x)robber_moving = false;
+                    }
+                }
+                else
+                {
+                    if (go_right)
+                    {
+                        if (Robber->ey >= robber_dest_y && Robber->ex >= robber_dest_x)robber_moving = false;
+                    }
+                    else
+                    {
+                        if (Robber->ey >= robber_dest_y && Robber->x <= robber_dest_x)robber_moving = false;
+                    }
+                }
+            }
+        }
 
 
 
@@ -927,6 +976,24 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
+        //////////////////////////////////////////////
+
+        if (Robber)
+        {
+            int aframe = Robber->GetFrame();
+            switch (Robber->dir)
+            {
+            case dirs::left:
+                Draw->DrawBitmap(bmpHeroL[aframe], Resizer(bmpHeroL[aframe], Robber->x, Robber->y));
+                break;
+
+            case dirs::right:
+                Draw->DrawBitmap(bmpHeroR[aframe], Resizer(bmpHeroR[aframe], Robber->x, Robber->y));
+                break;
+            }
+        }
+
+
 
 
         //////////////////////////////////////////
