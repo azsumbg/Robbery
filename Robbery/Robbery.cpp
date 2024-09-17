@@ -224,7 +224,7 @@ void InitGame()
 
     ClearMem(&Robber);
     Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 600.0f));
-
+    
 }
 
 
@@ -493,8 +493,8 @@ void CreateResources()
 
     if (!RegisterClass(&bWinClass))ErrExit(eClass);
 
-    bHwnd = CreateWindowW(bWinClassName, L"БЪРЗИЯТ ОБИРДЖИЯ !", WS_CAPTION | WS_SYSMENU, win_start_x, 10, scr_width,
-        scr_height, NULL, NULL, bIns, NULL);
+    bHwnd = CreateWindowW(bWinClassName, L"БЪРЗИЯТ ОБИРДЖИЯ !", WS_CAPTION | WS_SYSMENU, win_start_x, 10, (float)(scr_width),
+        (float)(scr_height), NULL, NULL, bIns, NULL);
     if (!bHwnd)ErrExit(eWindow);
     else
     {
@@ -879,7 +879,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
         {
             if (robber_moving)
             {
-                Robber->Move(game_speed);
+                int current_col = (int)(Robber->x / 50);
+                int current_row = (int)((Robber->y - 50.0f) / 50);
+                dll::SPOT current_spot = Field.GetSpotDims(current_row, current_col);
+                float move_speed = game_speed / 10 - current_spot.speed_modifier;
+      
+                Robber->Move(move_speed);
                 if (go_up)
                 {
                     if (go_right)
