@@ -18,5 +18,5 @@ namespace distance
 
 	extern POINT_API float FindDistance(OnePoint point1, OnePoint point2);
 
-	extern POINT_API bool SortPoints(std::vector<OnePoint>Input, OnePoint MyPoint, OnePoint& Output);
+	extern "C" POINT_API bool SortPoints(std::vector<OnePoint>& vInput, OnePoint MyPoint, OnePoint& Output);
 }

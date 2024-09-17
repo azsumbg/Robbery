@@ -139,6 +139,9 @@ std::vector<dll::ATOM> vTreasures;
 std::vector<dll::police_ptr> vPolice;
 
 
+int distracter_lifes = 3000;
+dll::ATOM* distracter = nullptr;
+
 //////////////////////////////////////////////////////////////////////
 template<typename T> concept CanBeReleased = requires (T parameter)
 {
@@ -227,8 +230,13 @@ void InitGame()
     name_set = false;
 
     ClearMem(&Robber);
-    Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 600.0f));
+    Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 650.0f));
     
+    if (distracter)
+    {
+        delete distracter;
+        distracter = nullptr;
+    }
     if (!vPolice.empty())
     {
         for (int i = 0; vPolice.size(); i++)ClearMem(&vPolice[i]);
@@ -256,10 +264,12 @@ void InitGame()
 
             if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
             else vPolice.back()->dir = dirs::up;
+
+            vPolice.back()->now_patroling = true;
         }
     }
-}
 
+}
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -943,13 +953,91 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vPolice.empty() && Robber)
+        {
+            for (int i = 0; i < vPolice.size(); ++i)
+            {
+                dll::AI_INPUT PoliceInfo{};
 
+                if (!vTreasures.empty())
+                {
+                    bool sorted = false;
+                    std::vector<distance::OnePoint>vTreasurePoints;
 
+                    for (int j = 0; j < vTreasures.size(); j++)
+                        vTreasurePoints.push_back(distance::OnePoint{ vTreasures[j].x, vTreasures[j].y });
 
+                    distance::OnePoint current_police_officer{ vPolice[i]->x,vPolice[i]->y };
+                    distance::OnePoint nearest_treasure_point{};
 
+                    while (!sorted)
+                    {
+                        sorted = true;
 
+                        for (int k = 0; k < vTreasurePoints.size() - 1; k++)
+                        {
+                            float a1 = (float)(pow(abs(vTreasurePoints[k].x - current_police_officer.x), 2));
+                            float b1 = (float)(pow(abs(vTreasurePoints[k].y - current_police_officer.y), 2));
+                            float c1 = (float)(sqrt(a1 + b1));
 
+                            float a2 = (float)(pow(abs(vTreasurePoints[k + 1].x - current_police_officer.x), 2));
+                            float b2 = (float)(pow(abs(vTreasurePoints[k + 1].y - current_police_officer.y), 2));
+                            float c2 = (float)(sqrt(a2 + b2));
 
+                            if (c1 > c2)
+                            {
+                                sorted = false;
+
+                                distance::OnePoint temp = vTreasurePoints[k + 1];
+                                vTreasurePoints[k + 1] = vTreasurePoints[k];
+                                vTreasurePoints[k] = temp;
+                            }
+                        }
+                    }
+
+                    nearest_treasure_point = vTreasurePoints[0];
+
+                    PoliceInfo.guard_obj_x = nearest_treasure_point.x;
+                    PoliceInfo.guard_obj_y = nearest_treasure_point.y;
+                }
+                else
+                {
+                    PoliceInfo.guard_obj_x = -1.0f;
+                    PoliceInfo.guard_obj_y = -1.0f;
+                }
+            
+                if (distracter)
+                {
+                    PoliceInfo.distracter_x = distracter->x;
+                    PoliceInfo.distracter_y = distracter->y;
+                    PoliceInfo.distract_on = true;
+                }
+                else
+                {
+                    PoliceInfo.distracter_x = -1;
+                    PoliceInfo.distracter_y = -1;
+                    PoliceInfo.distract_on = false;
+                }
+
+                PoliceInfo.hero_x = Robber->x;
+                PoliceInfo.hero_y = Robber->y;
+
+                if (vPolice[i]->dir == dirs::right || vPolice[i]->dir == dirs::left)PoliceInfo.horizontal_patrol = true;
+                else PoliceInfo.horizontal_patrol = false;
+                
+                if (abs(vPolice[i]->x - PoliceInfo.guard_obj_x) > 200.0f || abs(vPolice[i]->y - PoliceInfo.guard_obj_y) > 200.0f)
+                    PoliceInfo.need_to_set_patrol = true;
+                else PoliceInfo.need_to_set_patrol = false;
+                
+                int current_col = (int)(vPolice[i]->x / 50);
+                int current_row = (int)((vPolice[i]->y - 50.0f) / 50);
+                dll::SPOT current_spot = Field.GetSpotDims(current_row, current_col);
+                PoliceInfo.move_gear = game_speed / 10 - current_spot.speed_modifier;
+
+                vPolice[i]->AIDispatcher(PoliceInfo);
+                
+            }
+        }
         //Draw Things *******************************
 
         Draw->BeginDraw();
