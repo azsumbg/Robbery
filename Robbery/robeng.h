@@ -188,7 +188,7 @@ namespace dll
 			case creatures::serge:
 				NewDims(22.0f, 50.0f);
 				speed = 1.0f;
-				last_frame = 19;
+				last_frame = 7;
 				frame_delay = 7;
 				break;
 
@@ -215,6 +215,8 @@ namespace dll
 		void Release();
 
 		int GetFrame();
+
+		creatures GetType() const;
 
 		void AIDispatcher(AI_INPUT Info);
 	};

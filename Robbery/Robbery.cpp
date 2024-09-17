@@ -135,6 +135,10 @@ float robber_dest_y = 0;
 float go_up = false;
 float go_right = false;
 
+std::vector<dll::ATOM> vTreasures;
+std::vector<dll::police_ptr> vPolice;
+
+
 //////////////////////////////////////////////////////////////////////
 template<typename T> concept CanBeReleased = requires (T parameter)
 {
@@ -225,6 +229,35 @@ void InitGame()
     ClearMem(&Robber);
     Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 600.0f));
     
+    if (!vPolice.empty())
+    {
+        for (int i = 0; vPolice.size(); i++)ClearMem(&vPolice[i]);
+
+    }
+
+    vTreasures.clear();
+
+    std::uniform_int_distribution distrib(0, 1);
+
+    for (int i = 8; i >= 0; i--)
+    {
+        if (distrib(*twister) == 1)
+        {
+            std::uniform_int_distribution col_distrib(0, 19);
+            int temp_col = col_distrib(*twister);
+            dll::SPOT OneSpot = Field.GetSpotDims(i, temp_col);
+            vTreasures.push_back(dll::ATOM(OneSpot.x, OneSpot.y, 50.0f, 47.0f));
+
+            std::uniform_int_distribution pol_distrib(0, 3);
+            creatures police_officer = static_cast<creatures>(pol_distrib(*twister));
+
+            vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(police_officer,
+                vTreasures.back().x - 50.0f, vTreasures.back().y)));
+
+            if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
+            else vPolice.back()->dir = dirs::up;
+        }
+    }
 }
 
 
@@ -493,8 +526,8 @@ void CreateResources()
 
     if (!RegisterClass(&bWinClass))ErrExit(eClass);
 
-    bHwnd = CreateWindowW(bWinClassName, L"БЪРЗИЯТ ОБИРДЖИЯ !", WS_CAPTION | WS_SYSMENU, win_start_x, 10, (float)(scr_width),
-        (float)(scr_height), NULL, NULL, bIns, NULL);
+    bHwnd = CreateWindowW(bWinClassName, L"БЪРЗИЯТ ОБИРДЖИЯ !", WS_CAPTION | WS_SYSMENU, win_start_x, 10, (int)(scr_width),
+        (int)(scr_height), NULL, NULL, bIns, NULL);
     if (!bHwnd)ErrExit(eWindow);
     else
     {
@@ -997,8 +1030,57 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 break;
             }
         }
+        if (!vTreasures.empty())
+        {
+            for (int i = 0; i < vTreasures.size(); i++)
+                Draw->DrawBitmap(bmpTreasure, D2D1::RectF(vTreasures[i].x, vTreasures[i].y, vTreasures[i].ex, vTreasures[i].ey));
+        }
+        if (!vPolice.empty() && Robber)
+        {
+            for (int i = 0; i < vPolice.size(); i++)
+            {
+                int current_frame = vPolice[i]->GetFrame();
 
+                switch (vPolice[i]->GetType())
+                {
+                case creatures::fat:
+                    if (Robber->x >= vPolice[i]->x)
+                        Draw->DrawBitmap(bmpFatOffL[current_frame], Resizer(bmpFatOffL[current_frame], 
+                            vPolice[i]->x, vPolice[i]->y)); 
+                    else
+                        Draw->DrawBitmap(bmpFatOffR[current_frame], Resizer(bmpFatOffR[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    break;
 
+                case creatures::lazy:
+                    if (Robber->x >= vPolice[i]->x)
+                        Draw->DrawBitmap(bmpLazyOffL[current_frame], Resizer(bmpLazyOffL[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    else
+                        Draw->DrawBitmap(bmpLazyOffR[current_frame], Resizer(bmpLazyOffR[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    break;
+
+                case creatures::moto:
+                    if (Robber->x >= vPolice[i]->x)
+                        Draw->DrawBitmap(bmpMotoOffL[current_frame], Resizer(bmpMotoOffL[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    else
+                        Draw->DrawBitmap(bmpMotoOffR[current_frame], Resizer(bmpMotoOffR[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    break;
+
+                case creatures::serge:
+                    if (Robber->x >= vPolice[i]->x)
+                        Draw->DrawBitmap(bmpSergeL[current_frame], Resizer(bmpSergeL[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    else
+                        Draw->DrawBitmap(bmpSergeR[current_frame], Resizer(bmpSergeR[current_frame],
+                            vPolice[i]->x, vPolice[i]->y));
+                    break;
+                }
+            }
+        }
 
 
         //////////////////////////////////////////
