@@ -78,6 +78,8 @@ namespace dll
 
 		void operator () (int row, int col, fields new_type);
 
+		FIELD& operator =(FIELD& new_field);
+
 	};
 
 	class ROBENG_API ATOM

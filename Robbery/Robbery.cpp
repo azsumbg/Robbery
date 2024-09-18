@@ -238,9 +238,10 @@ void InitGame()
     }
     if (!vPolice.empty())
     {
-        for (int i = 0; vPolice.size(); i++)ClearMem(&vPolice[i]);
+        for (int i = 0; i < vPolice.size(); i++)ClearMem(&vPolice[i]);
 
     }
+    vPolice.clear();
 
     vTreasures.clear();
 
@@ -268,6 +269,97 @@ void InitGame()
         }
     }
 
+}
+void LevelUp()
+{
+    int bonus = 180 - secs;
+    if (bonus <= 0)bonus = 0;
+
+    Draw->BeginDraw();
+    Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+    if (bigText && HgltBrush)
+        Draw->DrawTextW(L"ОТКРАДНА ВСИЧКО В НИВОТО !", 27, bigText, D2D1::RectF(30.0f, 300.0f, scr_width, scr_height), TextBrush);
+    Draw->EndDraw();
+    if (sound)PlaySound(L".\\res\\snd\\levelup.wav", NULL, SND_SYNC);
+    else Sleep(2500);
+
+    if (bonus > 0)
+    {
+        for (int i = 0; i <= bonus; i++)
+        {
+            wchar_t bonus_txt[50] = L"БОНУС ЗА ВРЕМЕ: ";
+            wchar_t add[5] = L"\0";
+            int txt_size = 0;
+
+            score += 10 * (int)(game_speed);
+            wsprintf(add, L"%d", score);
+            wcscat_s(bonus_txt, add);
+
+            txt_size = 0;
+            for (int i = 0; i < 50; i++)
+            {
+                if (bonus_txt[i] != '\0')txt_size++;
+                else break;
+            }
+            
+            Draw->BeginDraw();
+            Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkBlue));
+            if (bigText && HgltBrush)
+                Draw->DrawTextW(bonus_txt, txt_size, bigText, D2D1::RectF(100.0f, 300.0f, scr_width, scr_height), TextBrush);
+            Draw->EndDraw();
+            if (sound)mciSendString(L"play .\\res\\snd\\tick.wav", NULL, NULL,NULL);
+            else Sleep(100);
+        }
+        Sleep(1500);
+    }
+
+    mins = 0;
+    secs = 0;
+    game_speed++;
+
+    ClearMem(&Robber);
+    Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 650.0f));
+
+    if (distracter)
+    {
+        delete distracter;
+        distracter = nullptr;
+    }
+    if (!vPolice.empty())
+    {
+        for (int i = 0; i < vPolice.size(); i++)ClearMem(&vPolice[i]);
+
+    }
+    vPolice.clear();
+
+    vTreasures.clear();
+
+    dll::FIELD new_field{};
+    Field = new_field;
+
+    std::uniform_int_distribution distrib(0, 1);
+
+    for (int i = 8; i >= 0; i--)
+    {
+        if (distrib(*twister) == 1)
+        {
+            std::uniform_int_distribution col_distrib(0, 19);
+            int temp_col = col_distrib(*twister);
+            dll::SPOT OneSpot = Field.GetSpotDims(i, temp_col);
+            vTreasures.push_back(dll::ATOM(OneSpot.x, OneSpot.y, 50.0f, 47.0f));
+
+            std::uniform_int_distribution pol_distrib(0, 3);
+            creatures police_officer = static_cast<creatures>(pol_distrib(*twister));
+
+            vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(police_officer,
+                vTreasures.back().x - 50.0f, vTreasures.back().y)));
+
+            if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
+            else vPolice.back()->dir = dirs::up;
+
+            vPolice.back()->now_patroling = true;
+        }
+    }
 }
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -484,7 +576,34 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
         break;
 
     case WM_LBUTTONDOWN:
-        if (Robber)
+        if (HIWORD(lParam) <= 50)
+        {
+            if (LOWORD(lParam) >= b1Rect.left && LOWORD(lParam) <= b1Rect.right)
+            {
+                if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                if (DialogBox(bIns, MAKEINTRESOURCE(IDD_PLAYER), hwnd, &DlgProc) == IDOK)name_set = true;
+                break;
+            }
+            if (LOWORD(lParam) >= b2Rect.left && LOWORD(lParam) <= b2Rect.right)
+            {
+                mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
+                if (sound)
+                {
+                    sound = false;
+                    PlaySound(NULL, NULL, NULL);
+                    break;
+                }
+                else
+                {
+                    sound = true;
+                    PlaySound(sound_file, NULL, SND_ASYNC | SND_LOOP);
+                    break;
+                }
+            }
+            
+            break;
+        }
+        else if (Robber)
         {
             robber_moving = true;
             robber_dest_x = LOWORD(lParam);
@@ -1026,6 +1145,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
             }
         }
 
+        if (!vTreasures.empty() && Robber)
+        {
+            for (std::vector<dll::ATOM>::iterator gold = vTreasures.begin(); gold < vTreasures.end(); gold++)
+            {
+                if (!(Robber->x > gold->ex || Robber->ex<gold->x || Robber->y>gold->ey || Robber->ey < gold->y))
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\gold.wav", NULL, NULL, NULL);
+                    score += 50 + (int)(game_speed);
+                    vTreasures.erase(gold);
+                    break;
+                }
+            }
+        }
+
         if (distracter)
         {
             if (sound)mciSendString(L"play .\\res\\snd\\distracter.wav", NULL, NULL, NULL);
@@ -1036,6 +1169,22 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 distracter = nullptr;
             }
         }
+
+        if (!vPolice.empty() && Robber)
+        {
+            for (std::vector<dll::police_ptr>::iterator police = vPolice.begin(); police < vPolice.end(); ++police)
+            {
+                if (!((*police)->x > Robber->ex || (*police)->ex<Robber->x
+                    || (*police)->y>Robber->ey || (*police)->ey < Robber->y))
+                {
+                    PlaySound(NULL, NULL, NULL);
+                    if (sound)PlaySound(L".\\res\\snd\\busted.wav", NULL, SND_SYNC);
+                    GameOver();
+                }
+            }
+        }
+
+        if (vTreasures.empty())LevelUp();
 
         //Draw Things *******************************
 
@@ -1102,6 +1251,38 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
+ 
+        if (nrmText && TextBrush)
+        {
+            wchar_t status_txt[150] = L"\0";
+            wchar_t add[5] = L"\0";
+            int txt_size = 0;
+
+            wcscpy_s(status_txt, current_player);
+            wcscat_s(status_txt, L", ВРЕМЕ: ");
+            if (mins % 10 < 10)wcscat_s(status_txt, L"0");
+            wsprintf(add, L"%d", mins);
+            wcscat_s(status_txt, add);
+            wcscat_s(status_txt, L" : ");
+            if (secs - mins * 10 < 10)wcscat_s(status_txt, L"0");
+            wsprintf(add, L"%d", secs - mins * 60);
+            wcscat_s(status_txt, add);
+            wcscat_s(status_txt, L", СКОРОСТ: ");
+            wsprintf(add, L"%d", (int)(game_speed));
+            wcscat_s(status_txt, add);
+            wcscat_s(status_txt, L", ОТКРАДНАТО ЗЛАТО: ");
+            wsprintf(add, L"%d", score);
+            wcscat_s(status_txt, add);
+
+            for (int i = 0; i < 150; i++)
+            {
+                if (status_txt[i] != '\0')txt_size++;
+                else break;
+            }
+            Draw->DrawTextW(status_txt, txt_size, nrmText, D2D1::RectF(10.0f, scr_height - 40.0f, 
+                scr_width, scr_height),TextBrush);
+        }
+        
         //////////////////////////////////////////////
 
         if (Robber)
