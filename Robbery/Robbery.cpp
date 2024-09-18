@@ -138,8 +138,7 @@ float go_right = false;
 std::vector<dll::ATOM> vTreasures;
 std::vector<dll::police_ptr> vPolice;
 
-
-int distracter_lifes = 3000;
+int distracter_lifes = 1000;
 dll::ATOM* distracter = nullptr;
 
 //////////////////////////////////////////////////////////////////////
@@ -497,6 +496,20 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
             Robber->LineSetup(robber_dest_x, robber_dest_y);
         }
         break;
+
+    case WM_RBUTTONDOWN:
+        if (distracter)
+        {
+            if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+            break;
+        }
+        if (Robber)
+        {
+            distracter = new dll::ATOM(Robber->ex, Robber->y, 25.0f, 50.0f);
+            distracter_lifes = 1000;
+        }
+        break;
+
 
     default: return DefWindowProc(hwnd, ReceivedMsg, wParam, lParam);
     }
@@ -877,7 +890,7 @@ void CreateResources()
             Draw->BeginDraw();
             Draw->DrawTextW(L"БЕСЕН ОБИРДЖИЯ !", 17, bigText, D2D1::RectF(200.0f, 300.0f,
                 scr_width, scr_height), HgltBrush);
-            Draw->DrawTextW(L"dev. Daniel !", 17, bigText, D2D1::RectF(400.0f, 600.0f, scr_width, scr_height), HgltBrush);
+            Draw->DrawTextW(L"dev. Daniel !", 14, bigText, D2D1::RectF(400.0f, 600.0f, scr_width, scr_height), HgltBrush);
             Draw->EndDraw();
 
             Sleep(1500);
@@ -1000,23 +1013,35 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 if (vPolice[i]->dir == dirs::right || vPolice[i]->dir == dirs::left)PoliceInfo.horizontal_patrol = true;
                 else PoliceInfo.horizontal_patrol = false;
                 
-                if (abs(vPolice[i]->x - PoliceInfo.guard_obj_x) > 200.0f || abs(vPolice[i]->y - PoliceInfo.guard_obj_y) > 200.0f)
+                if (abs(vPolice[i]->x - PoliceInfo.guard_obj_x) > 150.0f || abs(vPolice[i]->y - PoliceInfo.guard_obj_y) > 150.0f)
                     PoliceInfo.need_to_set_patrol = true;
                 else PoliceInfo.need_to_set_patrol = false;
                 
                 int current_col = (int)(vPolice[i]->x / 50);
                 int current_row = (int)((vPolice[i]->y - 50.0f) / 50);
                 dll::SPOT current_spot = Field.GetSpotDims(current_row, current_col);
-                PoliceInfo.move_gear = game_speed / 10 - current_spot.speed_modifier;
+                PoliceInfo.move_gear = game_speed + current_spot.speed_modifier;
 
-                vPolice[i]->AIDispatcher(PoliceInfo);
-                
+                vPolice[i]->AIDispatcher(PoliceInfo);   
             }
         }
+
+        if (distracter)
+        {
+            if (sound)mciSendString(L"play .\\res\\snd\\distracter.wav", NULL, NULL, NULL);
+            distracter_lifes--;
+            if (distracter_lifes <= 0)
+            {
+                delete distracter;
+                distracter = nullptr;
+            }
+        }
+
         //Draw Things *******************************
 
         Draw->BeginDraw();
-        
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::Khaki));
+
         if (nrmText && TextBrush && HgltBrush && InactBrush && BckgBrush)
         {
             Draw->FillRectangle(D2D1::RectF(0, 0, scr_width, 50.0f), BckgBrush);
@@ -1144,6 +1169,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                 }
             }
         }
+        if (distracter)
+            Draw->DrawBitmap(bmpDistracter, D2D1::RectF(distracter->x, distracter->y, distracter->ex, distracter->ey));
 
 
         //////////////////////////////////////////
