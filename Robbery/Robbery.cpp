@@ -961,7 +961,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                 if (!vTreasures.empty())
                 {
-                    bool sorted = false;
                     std::vector<distance::OnePoint>vTreasurePoints;
 
                     for (int j = 0; j < vTreasures.size(); j++)
@@ -969,34 +968,10 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
 
                     distance::OnePoint current_police_officer{ vPolice[i]->x,vPolice[i]->y };
                     distance::OnePoint nearest_treasure_point{};
-
-                    while (!sorted)
-                    {
-                        sorted = true;
-
-                        for (int k = 0; k < vTreasurePoints.size() - 1; k++)
-                        {
-                            float a1 = (float)(pow(abs(vTreasurePoints[k].x - current_police_officer.x), 2));
-                            float b1 = (float)(pow(abs(vTreasurePoints[k].y - current_police_officer.y), 2));
-                            float c1 = (float)(sqrt(a1 + b1));
-
-                            float a2 = (float)(pow(abs(vTreasurePoints[k + 1].x - current_police_officer.x), 2));
-                            float b2 = (float)(pow(abs(vTreasurePoints[k + 1].y - current_police_officer.y), 2));
-                            float c2 = (float)(sqrt(a2 + b2));
-
-                            if (c1 > c2)
-                            {
-                                sorted = false;
-
-                                distance::OnePoint temp = vTreasurePoints[k + 1];
-                                vTreasurePoints[k + 1] = vTreasurePoints[k];
-                                vTreasurePoints[k] = temp;
-                            }
-                        }
-                    }
-
-                    nearest_treasure_point = vTreasurePoints[0];
-
+                    
+                    distance::SortPoints(vTreasurePoints, vTreasurePoints.size(),
+                        current_police_officer, nearest_treasure_point);
+                    
                     PoliceInfo.guard_obj_x = nearest_treasure_point.x;
                     PoliceInfo.guard_obj_y = nearest_treasure_point.y;
                 }
