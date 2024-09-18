@@ -209,11 +209,84 @@ void ErrExit(int what)
     std::remove(temp_file);
     exit(1);
 }
+BOOL CheckRecord()
+{
+    if (score < 1)return no_record;
+    int result = 0;
+    
+    CheckFile(record_file, &result);
+    
+    if (result == FILE_NOT_EXIST)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; ++i)rec << static_cast<int>(current_player[i]) << std::endl;
+        rec.close();
+        return first_record;
+    }
+    else
+    {
+        std::wifstream check(record_file);
+        check >> result;
+        check.close();
+    }
 
+    if (result < score)
+    {
+        std::wofstream rec(record_file);
+        rec << score << std::endl;
+        for (int i = 0; i < 16; ++i)rec << static_cast<int>(current_player[i]) << std::endl;
+        rec.close();
+        return record;
+    }
+
+    return no_record;
+}
 void GameOver()
 {
     KillTimer(bHwnd, bTimer);
     PlaySound(NULL, NULL, NULL);
+
+    switch (CheckRecord())
+    {
+    case no_record:
+        if (bigText && TextBrush)
+        {
+            Draw->BeginDraw();
+            Draw->Clear(D2D1::ColorF(D2D1::ColorF::Khaki));
+            Draw->DrawTextW(L"ОКОШАРИХА ТЕ !", 15, bigText, D2D1::RectF(100.0f, 250.0f, scr_width, scr_height), TextBrush);
+            Draw->EndDraw();
+            if (sound)PlaySound(L".\\res\\snd\\loose.wav", NULL, SND_SYNC);
+            else Sleep(2500);
+        }
+        break;
+
+    case first_record:
+        if (bigText && TextBrush)
+        {
+            Draw->BeginDraw();
+            Draw->Clear(D2D1::ColorF(D2D1::ColorF::Khaki));
+            Draw->DrawTextW(L"ПЪРВИ РЕКОРД НА ИГРАТА !", 25, bigText, D2D1::RectF(10.0f, 250.0f, 
+                scr_width, scr_height), TextBrush);
+            Draw->EndDraw();
+            if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_SYNC);
+            else Sleep(2500);
+        }
+        break;
+
+    case record:
+        if (bigText && TextBrush)
+        {
+            Draw->BeginDraw();
+            Draw->Clear(D2D1::ColorF(D2D1::ColorF::Khaki));
+            Draw->DrawTextW(L"НОВ СВЕТОВЕН РЕКОРД !", 22, bigText, D2D1::RectF(10.0f, 250.0f,
+                scr_width, scr_height), TextBrush);
+            Draw->EndDraw();
+            if (sound)PlaySound(L".\\res\\snd\\record.wav", NULL, SND_SYNC);
+            else Sleep(2500);
+        }
+        break;
+    }
 
     bMsg.message = WM_QUIT;
     bMsg.wParam = 0;
