@@ -301,9 +301,10 @@ void InitGame()
     wcscpy_s(current_player, L"ONE ROBBER");
     name_set = false;
 
-    ClearMem(&Robber);
+    if (Robber) ClearMem(&Robber);
     Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 650.0f));
-    
+    robber_moving = false;
+
     if (distracter)
     {
         delete distracter;
@@ -320,28 +321,30 @@ void InitGame()
 
     std::uniform_int_distribution distrib(0, 1);
 
-    for (int i = 8; i >= 0; i--)
+    while (vTreasures.empty())
     {
-        if (distrib(*twister) == 1)
+        for (int i = 8; i >= 0; i--)
         {
-            std::uniform_int_distribution col_distrib(0, 19);
-            int temp_col = col_distrib(*twister);
-            dll::SPOT OneSpot = Field.GetSpotDims(i, temp_col);
-            vTreasures.push_back(dll::ATOM(OneSpot.x, OneSpot.y, 50.0f, 47.0f));
+            if (distrib(*twister) == 1)
+            {
+                std::uniform_int_distribution col_distrib(0, 19);
+                int temp_col = col_distrib(*twister);
+                dll::SPOT OneSpot = Field.GetSpotDims(i, temp_col);
+                vTreasures.push_back(dll::ATOM(OneSpot.x, OneSpot.y, 50.0f, 47.0f));
 
-            std::uniform_int_distribution pol_distrib(0, 3);
-            creatures police_officer = static_cast<creatures>(pol_distrib(*twister));
+                std::uniform_int_distribution pol_distrib(0, 3);
+                creatures police_officer = static_cast<creatures>(pol_distrib(*twister));
 
-            vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(police_officer,
-                vTreasures.back().x - 50.0f, vTreasures.back().y)));
+                vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(police_officer,
+                    vTreasures.back().x - 50.0f, vTreasures.back().y)));
 
-            if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
-            else vPolice.back()->dir = dirs::up;
+                if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
+                else vPolice.back()->dir = dirs::up;
 
-            vPolice.back()->now_patroling = true;
+                vPolice.back()->now_patroling = true;
+            }
         }
     }
-
     
 }
 void LevelUp()
@@ -382,7 +385,7 @@ void LevelUp()
                 Draw->DrawTextW(bonus_txt, txt_size, bigText, D2D1::RectF(100.0f, 300.0f, scr_width, scr_height), TextBrush);
             Draw->EndDraw();
             if (sound)mciSendString(L"play .\\res\\snd\\tick.wav", NULL, NULL,NULL);
-            else Sleep(100);
+            else Sleep(50);
         }
         Sleep(1500);
     }
@@ -391,7 +394,7 @@ void LevelUp()
     secs = 0;
     game_speed++;
 
-    ClearMem(&Robber);
+    if (Robber)ClearMem(&Robber);
     Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, 20.0f, 650.0f));
 
     if (distracter)
@@ -413,25 +416,28 @@ void LevelUp()
 
     std::uniform_int_distribution distrib(0, 1);
 
-    for (int i = 8; i >= 0; i--)
+    while (vTreasures.empty())
     {
-        if (distrib(*twister) == 1)
+        for (int i = 8; i >= 0; i--)
         {
-            std::uniform_int_distribution col_distrib(0, 19);
-            int temp_col = col_distrib(*twister);
-            dll::SPOT OneSpot = Field.GetSpotDims(i, temp_col);
-            vTreasures.push_back(dll::ATOM(OneSpot.x, OneSpot.y, 50.0f, 47.0f));
+            if (distrib(*twister) == 1)
+            {
+                std::uniform_int_distribution col_distrib(0, 19);
+                int temp_col = col_distrib(*twister);
+                dll::SPOT OneSpot = Field.GetSpotDims(i, temp_col);
+                vTreasures.push_back(dll::ATOM(OneSpot.x, OneSpot.y, 50.0f, 47.0f));
 
-            std::uniform_int_distribution pol_distrib(0, 3);
-            creatures police_officer = static_cast<creatures>(pol_distrib(*twister));
+                std::uniform_int_distribution pol_distrib(0, 3);
+                creatures police_officer = static_cast<creatures>(pol_distrib(*twister));
 
-            vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(police_officer,
-                vTreasures.back().x - 50.0f, vTreasures.back().y)));
+                vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(police_officer,
+                    vTreasures.back().x - 50.0f, vTreasures.back().y)));
 
-            if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
-            else vPolice.back()->dir = dirs::up;
+                if (distrib(*twister) == 0)vPolice.back()->dir = dirs::right;
+                else vPolice.back()->dir = dirs::up;
 
-            vPolice.back()->now_patroling = true;
+                vPolice.back()->now_patroling = true;
+            }
         }
     }
 }
@@ -482,6 +488,164 @@ void HallOfFame()
         Draw->EndDraw();
         Sleep(3500);
     }
+}
+void SaveGame()
+{
+    int result{};
+    CheckFile(save_file, &result);
+    if (result == FILE_EXIST)
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+        if (MessageBox(bHwnd, L"Ако продължиш, ще загубиш предишна записана игра !\n\nНаистина ли я презаписваш ?",
+            L"Презапис !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)return;
+    }
+
+    std::wofstream save(save_file);
+
+    save << score << std::endl;
+    save << game_speed << std::endl;
+    save << secs << std::endl;
+
+    for (int i = 0; i < 16; i++)
+        save << static_cast<int>(current_player[i]) << std::endl;
+    
+    save << name_set << std::endl;
+    if (!Robber)save << 0 << std::endl;
+    else
+    {
+        save << 1 << std::endl;
+        save << Robber->x << std::endl;
+        save << Robber->y << std::endl;
+    }
+
+    save << vPolice.size() << std::endl;
+    if (vPolice.size() > 0)
+    {
+        for (int i = 0; i < vPolice.size(); i++)
+        {
+            save << vPolice[i]->x << std::endl;
+            save << vPolice[i]->y << std::endl;
+            save << static_cast<int>(vPolice[i]->GetType()) << std::endl;
+        }
+    }
+    
+    save << vTreasures.size() << std::endl;
+    if (vTreasures.size() > 0)
+    {
+        for (int i = 0; i < vTreasures.size(); i++)
+        {
+            save << vTreasures[i].x << std::endl;
+            save << vTreasures[i].y << std::endl;
+        }
+    }
+
+    save.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+    MessageBox(bHwnd, L"Играта е запазена !", L"Запис !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
+}
+void LoadGame()
+{
+    int result{};
+
+    CheckFile(save_file, &result);
+    if (result == FILE_EXIST)
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\exclamation.wav", NULL, NULL, NULL);
+        if (MessageBox(bHwnd, L"Ако продължиш, ще загубиш тази игра !\n\nНаистина ли я презаписваш ?",
+            L"Презапис !", MB_YESNO | MB_APPLMODAL | MB_ICONQUESTION) == IDNO)return;
+    }
+    else
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+        MessageBox(bHwnd, L"Все още няма записана игра !\n\nПостарай се повече !",
+            L"Липсва файл !", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    if (Robber)ClearMem(&Robber);
+    robber_moving = false;
+    
+    if (distracter)
+    {
+        delete distracter;
+        distracter = nullptr;
+    }
+    if (!vPolice.empty())
+    {
+        for (int i = 0; i < vPolice.size(); i++)ClearMem(&vPolice[i]);
+
+    }
+    vPolice.clear();
+
+    vTreasures.clear();
+
+    dll::FIELD new_field{};
+    Field = new_field;
+
+    std::wifstream save(save_file);
+
+    save >> score;
+    save >> game_speed;
+    save >> secs;
+
+    for (int i = 0; i < 16; i++)
+    {
+        int letter = 0;
+        save >> letter;
+        current_player[i]=static_cast<wchar_t>(letter);
+    }
+
+    save >> name_set;
+
+    save >> result;
+    if (result == 0)GameOver();
+    else
+    {
+        float temp_x{};
+        float temp_y{};
+
+        save >> temp_x;
+        save >> temp_y;
+        Robber = reinterpret_cast<dll::hero_ptr>(dll::CreatureFactory(creatures::hero, temp_x, temp_y));
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; i++)
+        {
+            float temp_x{};
+            float temp_y{};
+            int temp_type = -1;
+            
+            save >> temp_x;
+            save >> temp_y;
+            save >> temp_type;
+
+            vPolice.push_back(reinterpret_cast<dll::police_ptr>(dll::CreatureFactory(static_cast<creatures>(temp_type),
+                temp_x, temp_y)));
+        }
+    }
+
+    save >> result;
+    if (result > 0)
+    {
+        for (int i = 0; i < result; i++)
+        {
+            float temp_x{};
+            float temp_y{};
+            
+            save >> temp_x;
+            save >> temp_y;
+
+            vTreasures.push_back(dll::ATOM(temp_x, temp_y, 50.0f, 47.0f));
+        }
+    }
+    save.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
+    MessageBox(bHwnd, L"Играта е заредена !", L"Зареждане !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
 }
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
@@ -694,13 +858,23 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
             SendMessage(hwnd, WM_CLOSE, NULL, NULL);
             break;
 
+        case mSave:
+            pause = true;
+            SaveGame();
+            pause = false;
+            break;
+
+        case mLoad:
+            pause = true;
+            LoadGame();
+            pause = false;
+            break;
 
         case mHoF:
             pause = true;
             HallOfFame();
             pause = false;
             break;
-
         }
         break;
 
@@ -709,6 +883,11 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
         {
             if (LOWORD(lParam) >= b1Rect.left && LOWORD(lParam) <= b1Rect.right)
             {
+                if (name_set)
+                {
+                    if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+                    break;
+                }
                 if (sound)mciSendString(L"play .\\res\\snd\\select.wav", NULL, NULL, NULL);
                 if (DialogBox(bIns, MAKEINTRESOURCE(IDD_PLAYER), hwnd, &DlgProc) == IDOK)name_set = true;
                 break;
@@ -1230,7 +1409,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance, _In_opt_ HINSTANCE hPrevInstance
                     distance::OnePoint current_police_officer{ vPolice[i]->x,vPolice[i]->y };
                     distance::OnePoint nearest_treasure_point{};
                     
-                    distance::SortPoints(vTreasurePoints, vTreasurePoints.size(),
+                    distance::SortPoints(vTreasurePoints, (int)(vTreasurePoints.size()),
                         current_police_officer, nearest_treasure_point);
                     
                     PoliceInfo.guard_obj_x = nearest_treasure_point.x;
