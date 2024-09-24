@@ -342,6 +342,7 @@ void InitGame()
         }
     }
 
+    
 }
 void LevelUp()
 {
@@ -432,6 +433,54 @@ void LevelUp()
 
             vPolice.back()->now_patroling = true;
         }
+    }
+}
+void HallOfFame()
+{
+    int result{};
+    CheckFile(record_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+        MessageBox(bHwnd, L"Все още няма рекорд на играта !\n\nПостарай се повече !",
+            L"Липсва файл !", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    wchar_t rec_txt[100] = L"НАЙ-ГОЛЯМ КРАДЕЦ: ";
+    wchar_t saved_player[16]{};
+    wchar_t add[10]{};
+
+    std::wifstream rec(record_file);
+    rec >> add;
+    for (int i = 0; i < 16; i++)
+    {
+        int letter = 0;
+        rec >> letter;
+        saved_player[i] = static_cast<wchar_t>(letter);
+    }
+    rec.close();
+
+    wcscat_s(rec_txt, saved_player);
+    wcscat_s(rec_txt, L"\n\nСВЕТОВЕН КРАДЛИВ РЕКОРД: ");
+    wcscat_s(rec_txt, add);
+
+    result = 0;
+    for (int i = 0; i < 100; i++)
+    {
+        if (rec_txt[i] != '\0')result++;
+        else break;
+    }
+
+    if (sound)mciSendString(L"play .\\res\\snd\\showrec.wav", NULL, NULL, NULL);
+
+    if (Draw && nrmText && TextBrush)
+    {
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::LavenderBlush));
+        Draw->DrawTextW(rec_txt, result, nrmText, D2D1::RectF(250.0f, 250.0f, scr_width, scr_height), TextBrush);
+        Draw->EndDraw();
+        Sleep(3500);
     }
 }
 
@@ -643,6 +692,13 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
 
         case mExit:
             SendMessage(hwnd, WM_CLOSE, NULL, NULL);
+            break;
+
+
+        case mHoF:
+            pause = true;
+            HallOfFame();
+            pause = false;
             break;
 
         }
