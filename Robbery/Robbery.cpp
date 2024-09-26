@@ -1,19 +1,19 @@
-#include "framework.h"
-#include "Robbery.h"
-#include <mmsystem.h>
-#include <d2d1.h>
-#include <dwrite.h>
+#include "D2BMPLOADER.h"
 #include "errh.h"
 #include "FCheck.h"
-#include "D2BMPLOADER.h"
+#include "framework.h"
 #include "gifresizer.h"
 #include "PointDistance.h"
+#include "Robbery.h"
 #include "robeng.h"
-#include <vector>
-#include <ctime>
 #include <chrono>
-#include <random>
+#include <ctime>
+#include <d2d1.h>
+#include <dwrite.h>
 #include <fstream>
+#include <mmsystem.h>
+#include <random>
+#include <vector>
 
 #pragma comment (lib, "winmm.lib")
 #pragma comment (lib, "d2d1.lib")
@@ -647,6 +647,53 @@ void LoadGame()
     if (sound)mciSendString(L"play .\\res\\snd\\save.wav", NULL, NULL, NULL);
     MessageBox(bHwnd, L"Играта е заредена !", L"Зареждане !", MB_OK | MB_APPLMODAL | MB_ICONINFORMATION);
 }
+void ShowHelp()
+{
+    int result = 0;
+    CheckFile(help_file, &result);
+    if (result == FILE_NOT_EXIST)
+    {
+        if (sound)mciSendString(L"play .\\res\\snd\\negative.wav", NULL, NULL, NULL);
+        MessageBox(bHwnd, L"Липсва помощ за играта !\n\nСвържете се с разработчика !",
+            L"Липсва файл !", MB_OK | MB_APPLMODAL | MB_ICONEXCLAMATION);
+        return;
+    }
+
+    wchar_t help_txt[1000] = L"\0";
+    
+    std::wifstream hlp(help_file);
+    hlp >> result;
+    for (int i = 0; i < result; i++)
+    {
+        int letter{};
+        hlp >> letter;
+        help_txt[i] = static_cast<wchar_t>(letter);
+    }
+    hlp.close();
+
+    if (sound)mciSendString(L"play .\\res\\snd\\help.wav", NULL, NULL, NULL);
+
+    if (Draw && nrmText && TextBrush && HgltBrush && InactBrush && BckgBrush)
+    {
+        Draw->BeginDraw();
+        Draw->Clear(D2D1::ColorF(D2D1::ColorF::DarkGoldenrod));
+        Draw->FillRectangle(D2D1::RectF(0, 0, scr_width, 50.0f), BckgBrush);
+        if (name_set)
+            Draw->DrawTextW(L"ИМЕ НА КРАДЕЦ", 14, nrmText, b1Rect, InactBrush);
+        else
+        {
+            if (!b1Hglt)Draw->DrawTextW(L"ИМЕ НА КРАДЕЦ", 14, nrmText, b1Rect, TextBrush);
+            else Draw->DrawTextW(L"ИМЕ НА КРАДЕЦ", 14, nrmText, b1Rect, HgltBrush);
+
+        }
+        if (!b2Hglt)Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmText, b2Rect, TextBrush);
+        else Draw->DrawTextW(L"ЗВУЦИ ON / OFF", 15, nrmText, b2Rect, HgltBrush);
+        if (!b3Hglt)Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmText, b3Rect, TextBrush);
+        else Draw->DrawTextW(L"ПОМОЩ ЗА ИГРАТА", 16, nrmText, b3Rect, HgltBrush);
+        Draw->DrawTextW(help_txt, result, nrmText, D2D1::RectF(100.0f, 200.0f, scr_width, scr_height), TextBrush);
+        Draw->EndDraw();
+    }
+}
 
 INT_PTR CALLBACK DlgProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lParam)
 {
@@ -908,7 +955,23 @@ LRESULT CALLBACK WinProc(HWND hwnd, UINT ReceivedMsg, WPARAM wParam, LPARAM lPar
                     break;
                 }
             }
-            
+            if (LOWORD(lParam) >= b3Rect.left && LOWORD(lParam) <= b3Rect.right)
+            {
+                if (!show_help)
+                {
+                    show_help = true;
+                    pause = true;
+                    ShowHelp();
+                    break;
+                }
+                else
+                {
+                    show_help = false;
+                    pause = false;
+                    break;
+                }
+            }
+
             break;
         }
         else if (Robber)
